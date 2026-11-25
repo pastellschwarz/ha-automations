@@ -1,0 +1,343 @@
+blueprint:
+  name: Philips Hue Dimmer switch v2 – multiple remotes (Zigbee2MQTT)
+  description: >
+    Based on CrazyCoder's "Philips Hue Dimmer switch v2 (Zigbee2MQTT)"
+    (https://gist.github.com/CrazyCoder/28d660d9e2e8464458e591ad79b3698e).
+
+    Changes compared to the original:
+
+    * **Multiple remotes:** select any number of Hue Dimmer v2 devices. Every
+    button gesture runs in its own parallel run, so remotes never block each other.
+
+    * **No helper entity:** every gesture (press → release, or press → hold →
+    hold release) is handled inside one run that waits for the release of the
+    *same* remote and button. No input_text is needed for "hold once" or for
+    filtering empty events.
+
+    * **Configurable repeat interval:** while a button is held, the "hold"
+    action is repeated by the automation itself at the interval you set,
+    independent of how often the dimmer sends `*_hold`.
+
+    * **No trigger registration:** the automation listens to the Zigbee2MQTT
+    `<base topic>/<friendly name>/action` topic, so you don't need to press each
+    button once after pairing.
+
+
+    Variables available in your actions: `remote_device_id`, `remote_name`,
+    `remote_area` (area of the pressed remote, e.g. for
+    `target: { area_id: "{{ remote_area }}" }`), `button` (on, up, down, off) and,
+    inside the hold action, `repeat.index`.
+
+
+    Keep actions short (e.g. light.turn_on). If an action takes longer than the
+    repeat interval, call a script with `script.turn_on` instead, otherwise a
+    release can be missed and the hold stops only after the maximum number of
+    repeats.
+
+
+    Remotes are matched by their Zigbee2MQTT friendly name (also with "/" up to
+    three levels, e.g. "living_room/dimmer"). Renaming a device in Home Assistant
+    is fine: the match uses the name Zigbee2MQTT reports, not the name shown in
+    Home Assistant. Only a custom `homeassistant: name:` override in the
+    Zigbee2MQTT device options breaks the match.
+  domain: automation
+  homeassistant:
+    min_version: 2025.4.0
+  input:
+    controller_devices:
+      name: Hue Dimmer Switches
+      description: Select one or more Hue Dimmer Switch v2 devices.
+      selector:
+        device:
+          multiple: true
+          filter:
+            # Each Zigbee2MQTT version reports a different model string; delete one
+            # and the picker goes empty for anyone still on that version. model_id
+            # never changes, but that selector key needs HA 2025.4 (see min_version).
+            - integration: mqtt
+              manufacturer: Philips
+              model_id: "929002398602"
+            - integration: mqtt
+              manufacturer: Philips
+              model: Hue dimmer switch gen 2
+            - integration: mqtt
+              manufacturer: Philips
+              model: Hue dimmer switch
+            - integration: mqtt
+              manufacturer: Philips
+              model: Hue dimmer switch (929002398602)
+    base_topic:
+      name: Zigbee2MQTT base topic
+      description: Base topic configured in Zigbee2MQTT (default `zigbee2mqtt`).
+      default: zigbee2mqtt
+      selector:
+        text: {}
+    repeat_interval:
+      name: Repeat interval while holding
+      description: Time between two repetitions of the 'button hold' action.
+      default: 500
+      selector:
+        number:
+          min: 100
+          max: 3000
+          step: 50
+          unit_of_measurement: ms
+          mode: slider
+    max_repeats:
+      name: Maximum repeats
+      description: >
+        Safety limit: stop repeating after this many repetitions, in case the
+        release message gets lost.
+      default: 40
+      selector:
+        number:
+          min: 1
+          max: 200
+          mode: box
+    on_button:
+      name: ON Button
+      icon: mdi:power
+      collapsed: true
+      input:
+        on_press:
+          name: ON button press
+          description: Runs immediately when the button goes down (also before a hold).
+          default: []
+          selector: { action: {} }
+        on_press_release:
+          name: ON button release
+          description: Runs after a short press.
+          default: []
+          selector: { action: {} }
+        on_hold:
+          name: ON button hold
+          description: Runs when a hold is detected and then repeats at the repeat interval.
+          default: []
+          selector: { action: {} }
+        on_hold_once:
+          name: ON button hold once
+          description: Runs once when a hold is detected (before the first 'hold').
+          default: []
+          selector: { action: {} }
+        on_hold_release:
+          name: ON button hold release
+          description: Runs when the button is released after a hold.
+          default: []
+          selector: { action: {} }
+    up_button:
+      name: UP Button
+      icon: mdi:arrow-up-bold
+      collapsed: true
+      input:
+        up_press:
+          name: UP button press
+          description: Runs immediately when the button goes down (also before a hold).
+          default: []
+          selector: { action: {} }
+        up_press_release:
+          name: UP button release
+          description: Runs after a short press.
+          default: []
+          selector: { action: {} }
+        up_hold:
+          name: UP button hold
+          description: Runs when a hold is detected and then repeats at the repeat interval.
+          default: []
+          selector: { action: {} }
+        up_hold_once:
+          name: UP button hold once
+          description: Runs once when a hold is detected (before the first 'hold').
+          default: []
+          selector: { action: {} }
+        up_hold_release:
+          name: UP button hold release
+          description: Runs when the button is released after a hold.
+          default: []
+          selector: { action: {} }
+    down_button:
+      name: DOWN Button
+      icon: mdi:arrow-down-bold
+      collapsed: true
+      input:
+        down_press:
+          name: DOWN button press
+          description: Runs immediately when the button goes down (also before a hold).
+          default: []
+          selector: { action: {} }
+        down_press_release:
+          name: DOWN button release
+          description: Runs after a short press.
+          default: []
+          selector: { action: {} }
+        down_hold:
+          name: DOWN button hold
+          description: Runs when a hold is detected and then repeats at the repeat interval.
+          default: []
+          selector: { action: {} }
+        down_hold_once:
+          name: DOWN button hold once
+          description: Runs once when a hold is detected (before the first 'hold').
+          default: []
+          selector: { action: {} }
+        down_hold_release:
+          name: DOWN button hold release
+          description: Runs when the button is released after a hold.
+          default: []
+          selector: { action: {} }
+    off_button:
+      name: OFF/HUE Button
+      icon: mdi:power-off
+      collapsed: true
+      input:
+        off_press:
+          name: OFF/HUE button press
+          description: Runs immediately when the button goes down (also before a hold).
+          default: []
+          selector: { action: {} }
+        off_press_release:
+          name: OFF/HUE button release
+          description: Runs after a short press.
+          default: []
+          selector: { action: {} }
+        off_hold:
+          name: OFF/HUE button hold
+          description: Runs when a hold is detected and then repeats at the repeat interval.
+          default: []
+          selector: { action: {} }
+        off_hold_once:
+          name: OFF/HUE button hold once
+          description: Runs once when a hold is detected (before the first 'hold').
+          default: []
+          selector: { action: {} }
+        off_hold_release:
+          name: OFF/HUE button hold release
+          description: Runs when the button is released after a hold.
+          default: []
+          selector: { action: {} }
+
+# One run per gesture; remotes and buttons must not block each other.
+mode: parallel
+max: 40
+max_exceeded: silent
+
+trigger_variables:
+  base_topic: !input base_topic
+
+# Only the initial press starts a run. Releases and holds are awaited inside it,
+# repeated *_hold messages from the device are therefore ignored.
+# Three topic levels so friendly names like "room/dimmer" or "floor/room/dimmer" work.
+triggers:
+  - trigger: mqtt
+    topic: "{{ base_topic }}/+/action"
+    value_template: "{{ 'press' if value in ['on_press', 'up_press', 'down_press', 'off_press'] else 'other' }}"
+    payload: press
+  - trigger: mqtt
+    topic: "{{ base_topic }}/+/+/action"
+    value_template: "{{ 'press' if value in ['on_press', 'up_press', 'down_press', 'off_press'] else 'other' }}"
+    payload: press
+  - trigger: mqtt
+    topic: "{{ base_topic }}/+/+/+/action"
+    value_template: "{{ 'press' if value in ['on_press', 'up_press', 'down_press', 'off_press'] else 'other' }}"
+    payload: press
+
+variables:
+  controller_devices: !input controller_devices
+  repeat_interval: !input repeat_interval
+  max_repeats: !input max_repeats
+  button: "{{ trigger.payload | replace('_press', '') }}"
+  remote_topic: "{{ trigger.topic }}"
+  # <base>/<friendly name>/action  →  <friendly name> (may contain "/")
+  # Compared with the device name provided by Zigbee2MQTT ("name"), NOT with a
+  # name you changed in Home Assistant ("name_by_user").
+  remote_name: "{{ remote_topic[(base_topic | length) + 1 : -('/action' | length)] }}"
+  remote_device_id: >
+    {% set ns = namespace(id=none) %}
+    {% for d in controller_devices if device_attr(d, 'name') == remote_name %}
+      {% set ns.id = d %}
+    {% endfor %}
+    {{ ns.id }}
+  remote_area: "{{ area_id(remote_device_id) if remote_device_id else none }}"
+
+conditions:
+  # only remotes selected in this automation
+  - "{{ remote_device_id is not none }}"
+
+actions:
+  # 1) press (immediately)
+  - choose:
+      - conditions: "{{ button == 'on' }}"
+        sequence: !input on_press
+      - conditions: "{{ button == 'up' }}"
+        sequence: !input up_press
+      - conditions: "{{ button == 'down' }}"
+        sequence: !input down_press
+      - conditions: "{{ button == 'off' }}"
+        sequence: !input off_press
+
+  # 2) short press or hold? Wait for the same remote and button.
+  - wait_for_trigger:
+      - trigger: mqtt
+        topic: "{{ remote_topic }}"
+        payload: "{{ button }}_press_release"
+      - trigger: mqtt
+        topic: "{{ remote_topic }}"
+        payload: "{{ button }}_hold"
+    timeout: 5
+    continue_on_timeout: false
+
+  # 3a) short press → release action, done
+  - if: "{{ wait.trigger.payload == button ~ '_press_release' }}"
+    then:
+      - choose:
+          - conditions: "{{ button == 'on' }}"
+            sequence: !input on_press_release
+          - conditions: "{{ button == 'up' }}"
+            sequence: !input up_press_release
+          - conditions: "{{ button == 'down' }}"
+            sequence: !input down_press_release
+          - conditions: "{{ button == 'off' }}"
+            sequence: !input off_press_release
+      - stop: Short press handled
+
+  # 3b) hold → hold once, then repeat hold until release
+  - choose:
+      - conditions: "{{ button == 'on' }}"
+        sequence: !input on_hold_once
+      - conditions: "{{ button == 'up' }}"
+        sequence: !input up_hold_once
+      - conditions: "{{ button == 'down' }}"
+        sequence: !input down_hold_once
+      - conditions: "{{ button == 'off' }}"
+        sequence: !input off_hold_once
+
+  - repeat:
+      sequence:
+        - choose:
+            - conditions: "{{ button == 'on' }}"
+              sequence: !input on_hold
+            - conditions: "{{ button == 'up' }}"
+              sequence: !input up_hold
+            - conditions: "{{ button == 'down' }}"
+              sequence: !input down_hold
+            - conditions: "{{ button == 'off' }}"
+              sequence: !input off_hold
+        # wait one interval for the release; continue repeating on timeout
+        - wait_for_trigger:
+            - trigger: mqtt
+              topic: "{{ remote_topic }}"
+              payload: "{{ button }}_hold_release"
+          timeout:
+            milliseconds: "{{ repeat_interval | int }}"
+          continue_on_timeout: true
+      until: "{{ wait.trigger is not none or repeat.index >= (max_repeats | int) }}"
+
+  # 4) hold release (also after hitting the safety limit)
+  - choose:
+      - conditions: "{{ button == 'on' }}"
+        sequence: !input on_hold_release
+      - conditions: "{{ button == 'up' }}"
+        sequence: !input up_hold_release
+      - conditions: "{{ button == 'down' }}"
+        sequence: !input down_hold_release
+      - conditions: "{{ button == 'off' }}"
+        sequence: !input off_hold_release
